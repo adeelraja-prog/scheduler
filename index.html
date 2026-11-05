@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#171717">
+<title>Adeel Raja | YouTube Clip Scheduler</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+:root{color-scheme:light dark;--bg:#f4f5f7;--card:#fff;--tx:#171717;--muted:#666;--ac:#c4302b;--bd:#d9dce1;--ok:#16834a;--warn:#a56a00}
+@media(prefers-color-scheme:dark){:root{--bg:#111315;--card:#1c2024;--tx:#f4f4f4;--muted:#aaa;--bd:#343a40;--ok:#55c889;--warn:#f0bd55}}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--tx);padding:18px;max-width:760px;margin:auto}
+header{padding:8px 2px 14px}h1{font-size:24px;margin:0 0 5px}header p,.hint{color:var(--muted);font-size:13px;line-height:1.5;margin:4px 0}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin:12px 0}
+h2{font-size:16px;margin:0 0 12px}.step{color:var(--ac);font-weight:750;margin-right:6px}
+button,select,input:not([type=checkbox]),input[type=file]{font:inherit;padding:11px;border-radius:9px;border:1px solid var(--bd);background:var(--card);color:var(--tx);width:100%;margin:5px 0}
+button{background:var(--ac);color:#fff;border:0;font-weight:700;cursor:pointer}button:disabled{opacity:.55;cursor:not-allowed}
+button.secondary{background:transparent;color:var(--tx);border:1px solid var(--bd)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field{min-width:0}label{font-size:13px;color:var(--muted);display:block;margin:6px 0}
+.check{display:flex;align-items:center;gap:8px;color:var(--tx)}.check input{width:auto}
+canvas{display:block;width:100%;max-height:300px;object-fit:contain;border-radius:9px;background:#333;margin-top:10px}
+#log{max-height:260px;overflow:auto;margin-top:10px}#log div{font-size:13px;padding:7px 2px;border-bottom:1px solid var(--bd);overflow-wrap:anywhere}
+#count,#who{font-size:13px;margin-top:7px;color:var(--muted)}.status{font-weight:650}.ok{color:var(--ok)}.warn{color:var(--warn)}
+.notice{background:color-mix(in srgb,var(--ac) 9%,var(--card));border-left:3px solid var(--ac);padding:10px;border-radius:7px;font-size:13px;line-height:1.5;margin-top:10px}
+progress{width:100%;height:10px;margin-top:10px;accent-color:var(--ac)}
+@media(max-width:520px){body{padding:10px}.grid{grid-template-columns:1fr}h1{font-size:21px}}
+</style>
+</head>
+<body>
+<header>
+<h1>🎬 Adeel Raja — YouTube Clip Scheduler</h1>
+<p>Prepare multiple clips, add a watermark, and schedule them to publish on YouTube.</p>
+</header>
+
+<section class="card">
+<h2><span class="step">1.</span>Connect your YouTube account</h2>
+<input id="clientId" type="text" autocomplete="off" placeholder="Google OAuth Client ID (…apps.googleusercontent.com)">
+<button id="login">Sign in with Google &amp; connect YouTube</button>
+<div id="who" aria-live="polite">Not connected.</div>
+<p class="hint">Your Client ID is saved only in this browser. Your Google access token is kept in memory and is not saved.</p>
+</section>
+
+<section class="card">
+<h2><span class="step">2.</span>Select video clips</h2>
+<input type="file" id="files" accept="video/*" multiple>
+<div id="count">No videos selected.</div>
+<p class="hint">Files are processed and uploaded one at a time. Keep this page open and your computer awake until the queue finishes.</p>
+</section>
+
+<section class="card">
+<h2><span class="step">3.</span>Watermark settings</h2>
+<label for="watermarkText">Watermark text</label>
+<input id="watermarkText" value="@adeelrajaviews" placeholder="e.g. @adeelrajaviews">
+<label for="logo">Optional logo image</label>
+<input type="file" id="logo" accept="image/*">
+<div class="grid">
+<div class="field"><label for="watermarkDesign">Watermark style</label><select id="watermarkDesign"></select></div>
+<div class="field"><label for="watermarkPosition">Watermark position</label>
+<select id="watermarkPosition">
+<option value="tl">Top left</option><option value="tc">Top centre</option><option value="tr">Top right</option>
+<option value="ml">Middle left</option><option value="mc">Centre</option><option value="mr">Middle right</option>
+<option value="bl">Bottom left</option><option value="bc" selected>Bottom centre</option><option value="br">Bottom right</option>
+</select></div></div>
+<label class="check"><input type="checkbox" id="watermarkOn" checked> Apply watermark to videos</label>
+<canvas id="preview" width="720" height="400" aria-label="Watermark preview"></canvas>
+<p class="hint">The preview shows the watermark layout. The watermark is permanently rendered into each processed video.</p>
+</section>
+
+<section class="card">
+<h2><span class="step">4.</span>Publishing schedule</h2>
+<div class="grid">
+<div class="field"><label for="start">First publication date and time</label><input type="datetime-local" id="start"></div>
+<div class="field"><label for="gap">Time between clips</label><select id="gap">
+<option value="2">Every 2 hours</option><option value="4">Every 4 hours</option><option value="6">Every 6 hours</option>
+<option value="8" selected>Every 8 hours</option><option value="10">Every 10 hours</option><option value="12">Every 12 hours</option><option value="24">Once a day</option>
+</select></div></div>
+<label for="description">Shared description / hashtags (optional)</label>
+<input id="description" placeholder="Add a description and hashtags for every clip">
+<button id="startQueue">▶ Upload and schedule clips</button>
+<button id="clearQueue" class="secondary" type="button">Clear selected clips</button>
+<progress id="progress" value="0" max="1"></progress>
+<div id="log" aria-live="polite"></div>
+<div class="notice"><strong>Important:</strong> This is a browser-based scheduler, not a cloud worker. Your browser must stay open during processing and uploads. YouTube API quota limits may apply. Scheduled clips are uploaded as private videos with a future publish time.</div>
+</section>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const designs = [
+ {name:"White text",font:"bold 28px sans-serif",color:"#fff",box:"rgba(0,0,0,0)",stroke:"#000"},
+ {name:"White text on black box",font:"bold 28px sans-serif",color:"#fff",box:"rgba(0,0,0,.65)",stroke:null},
+ {name:"Yellow",font:"bold 30px sans-serif",color:"#ffd400",box:"rgba(0,0,0,0)",stroke:"#000"},
+ {name:"Red box",font:"bold 28px sans-serif",color:"#fff",box:"rgba(196,48,43,.92)",stroke:null},
+ {name:"Black text on white box",font:"bold 28px sans-serif",color:"#000",box:"rgba(255,255,255,.88)",stroke:null},
+ {name:"Blue box",font:"bold 28px sans-serif",color:"#fff",box:"rgba(20,90,200,.92)",stroke:null},
+ {name:"Green box",font:"bold 28px sans-serif",color:"#fff",box:"rgba(20,140,70,.92)",stroke:null},
+ {name:"Subtle / semi-transparent",font:"24px sans-serif",color:"rgba(255,255,255,.78)",box:"rgba(0,0,0,0)",stroke:"rgba(0,0,0,.6)"}
+];
+designs.forEach((d,i)=>$("watermarkDesign").add(new Option(d.name,String(i))));
+let queue=[],logoImage=null,accessToken=null,isRunning=false;
+$("clientId").value=localStorage.getItem("adeelSchedulerClientId")||"";
+function addLog(message,kind=""){const row=document.createElement("div");row.textContent=message;if(kind)row.className=kind;$("log").prepend(row)}
+function updateCount(){$("count").textContent=queue.length+" video(s) in the upload queue."}
+function drawWatermark(ctx,width,height){
+ if(!$("watermarkOn").checked)return;
+ const style=designs[Number($("watermarkDesign").value)]||designs[0],position=$("watermarkPosition").value,scale=width/720,pad=24*scale,text=$("watermarkText").value.trim(),parts=[];
+ if(logoImage){const h=Math.round(height*.10),w=logoImage.width/logoImage.height*h;parts.push({w,h,draw:(x,y)=>ctx.drawImage(logoImage,x,y,w,h)})}
+ if(text){ctx.font=style.font.replace(/\d+px/,m=>(parseInt(m,10)*scale)+"px");const w=ctx.measureText(text).width+24*scale,h=44*scale;
+  parts.push({w,h,draw:(x,y)=>{ctx.fillStyle=style.box;ctx.fillRect(x,y,w,h);ctx.fillStyle=style.color;ctx.textBaseline="middle";if(style.stroke){ctx.lineWidth=4*scale;ctx.strokeStyle=style.stroke;ctx.strokeText(text,x+12*scale,y+h/2)}ctx.fillText(text,x+12*scale,y+h/2)}})}
+ if(!parts.length)return;
+ const totalWidth=parts.reduce((sum,p)=>sum+p.w,0)+(parts.length-1)*10*scale,totalHeight=Math.max(...parts.map(p=>p.h));
+ const px=position.endsWith("l")?pad:position.endsWith("r")?width-totalWidth-pad:(width-totalWidth)/2;
+ const py=position.startsWith("t")?pad:position.startsWith("b")?height-totalHeight-pad*2.5:(height-totalHeight)/2;
+ let x=px;parts.forEach(p=>{p.draw(x,py+(totalHeight-p.h)/2);x+=p.w+10*scale});
+}
+function preview(){const canvas=$("preview"),ctx=canvas.getContext("2d");ctx.fillStyle="#555";ctx.fillRect(0,0,canvas.width,canvas.height);drawWatermark(ctx,canvas.width,canvas.height)}
+["watermarkText","watermarkDesign","watermarkPosition","watermarkOn"].forEach(id=>$(id).addEventListener("input",preview));
+$("logo").addEventListener("change",e=>{const file=e.target.files[0];if(!file)return;const img=new Image();img.onload=()=>{logoImage=img;preview()};img.onerror=()=>addLog("Could not read the selected logo image.");img.src=URL.createObjectURL(file)});
+preview();
+
+$("files").addEventListener("change",e=>{
+ const existing=new Set(queue.map(x=>x.key));let added=0,duplicates=0;
+ for(const file of e.target.files){const key=file.name+"|"+file.size+"|"+file.lastModified;if(existing.has(key)){duplicates++;continue}existing.add(key);queue.push({file,title:file.name.replace(/\.[^.]+$/,""),key});added++}
+ updateCount();$("files").value="";
+ if(duplicates)addLog(duplicates+" duplicate file(s) skipped.");if(added)addLog(added+" video(s) added to the queue.","ok");
+});
+$("clearQueue").addEventListener("click",()=>{if(isRunning)return;queue=[];updateCount();$("progress").value=0;$("progress").max=1;addLog("Queue cleared.")});
+
+$("login").addEventListener("click",()=>{
+ const clientId=$("clientId").value.trim();
+ if(!clientId)return alert("Enter your Google OAuth Client ID first.");
+ if(!clientId.endsWith(".apps.googleusercontent.com"))return alert("That does not look like a Google OAuth Client ID.");
+ if(!window.google?.accounts?.oauth2)return alert("Google Sign-In has not loaded yet. Wait a moment and try again.");
+ localStorage.setItem("adeelSchedulerClientId",clientId);
+ $("login").disabled=true;
+ const client=google.accounts.oauth2.initTokenClient({client_id:clientId,scope:"https://www.googleapis.com/auth/youtube.upload",callback:response=>{
+  $("login").disabled=false;
+  if(response.error||!response.access_token){accessToken=null;$("who").textContent="Sign-in failed: "+(response.error_description||response.error||"No access token returned");return}
+  accessToken=response.access_token;$("who").textContent="✓ YouTube connected. You can start uploading."; $("who").className="status ok";
+ },error_callback:error=>{$("login").disabled=false;$("who").textContent="Google sign-in error: "+(error.message||error.type||"Unknown error")}});
+ client.requestAccessToken({prompt:"consent"});
+});
+
+function renderVideoWithWatermark(file){
+ return new Promise(async(resolve,reject)=>{
+  const video=document.createElement("video"),url=URL.createObjectURL(file);video.src=url;video.muted=false;video.playsInline=true;video.preload="auto";
+  let audioContext,recorder,raf;
+  const cleanup=()=>{cancelAnimationFrame(raf);try{video.pause();video.removeAttribute("src");video.load();URL.revokeObjectURL(url)}catch{}if(audioContext)audioContext.close().catch(()=>{})};
+  try{
+   await new Promise((res,rej)=>{video.onloadedmetadata=res;video.onerror=()=>rej(new Error("The browser could not read this video."))});
+   if(!video.videoWidth||!video.videoHeight)throw new Error("Video dimensions could not be detected.");
+   const canvas=document.createElement("canvas");canvas.width=video.videoWidth;canvas.height=video.videoHeight;const ctx=canvas.getContext("2d");
+   if(!canvas.captureStream)throw new Error("This browser does not support canvas video capture. Try the latest Chrome or Edge.");
+   const stream=canvas.captureStream(30);
+   if(video.captureStream){const source=video.captureStream();source.getAudioTracks().forEach(track=>stream.addTrack(track))}
+   else{audioContext=new AudioContext();const source=audioContext.createMediaElementSource(video),destination=audioContext.createMediaStreamDestination();source.connect(destination);destination.stream.getAudioTracks().forEach(track=>stream.addTrack(track))}
+   const mime=["video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"].find(type=>MediaRecorder.isTypeSupported(type));
+   if(!mime)throw new Error("This browser cannot record a supported WebM video. Try the latest Chrome or Edge.");
+   recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:8000000});const chunks=[];
+   recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
+   recorder.onerror=()=>{cleanup();reject(new Error("Video processing failed in the browser."))};
+   recorder.onstop=()=>{const blob=new Blob(chunks,{type:"video/webm"});cleanup();if(!blob.size)reject(new Error("The processed video is empty."));else resolve(blob)};
+   const drawFrame=()=>{ctx.drawImage(video,0,0,canvas.width,canvas.height);drawWatermark(ctx,canvas.width,canvas.height);if(!video.ended)raf=requestAnimationFrame(drawFrame)};
+   video.onended=()=>{if(recorder.state!=="inactive")recorder.stop()};
+   recorder.start(1000);await video.play();drawFrame();
+  }catch(error){if(recorder&&recorder.state!=="inactive")recorder.stop();cleanup();reject(error)}
+ });
+}
+async function uploadToYouTube(blob,item,publishAt){
+ const metadata={snippet:{title:item.title.slice(0,100),description:$("description").value,categoryId:"22"},status:{privacyStatus:"private",publishAt:publishAt.toISOString(),selfDeclaredMadeForKids:false}};
+ const init=await fetch("https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",{method:"POST",headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json; charset=UTF-8","X-Upload-Content-Type":blob.type,"X-Upload-Content-Length":String(blob.size)},body:JSON.stringify(metadata)});
+ if(!init.ok){const body=await init.text();if(init.status===401){accessToken=null;throw new Error("Google access expired. Sign in again and retry the remaining clips.")}if(body.toLowerCase().includes("quota"))throw new Error("YouTube API daily quota has been exceeded.");throw new Error("YouTube rejected the upload request ("+init.status+"): "+body.slice(0,260))}
+ const uploadUrl=init.headers.get("Location");if(!uploadUrl)throw new Error("YouTube did not return an upload URL.");
+ const result=await fetch(uploadUrl,{method:"PUT",headers:{"Content-Type":blob.type},body:blob});
+ if(!result.ok){const body=await result.text();if(result.status===401)accessToken=null;throw new Error("Video upload failed ("+result.status+"): "+body.slice(0,220))}
+ return await result.json();
+}
+$("startQueue").addEventListener("click",async()=>{
+ if(isRunning)return;
+ if(!accessToken)return alert("Connect your YouTube account first.");
+ if(!queue.length)return alert("Select at least one video.");
+ if(!$("start").value)return alert("Choose the first publication date and time.");
+ const requestedStart=new Date($("start").value).getTime(),minimum=Date.now()+15*60*1000;
+ if(!Number.isFinite(requestedStart))return alert("The selected date and time is invalid.");
+ const baseTime=Math.max(requestedStart,minimum),gap=Number($("gap").value)*60*60*1000;
+ if(requestedStart<minimum&&!confirm("YouTube needs scheduled publication to be at least 15 minutes in the future. The first clip will be scheduled for the earliest allowed time. Continue?"))return;
+ isRunning=true;$("startQueue").disabled=true;$("clearQueue").disabled=true;$("progress").max=queue.length;$("progress").value=0;
+ let completed=0,index=0;
+ try{
+  while(index<queue.length){
+   const item=queue[index],publishAt=new Date(baseTime+completed*gap);
+   try{
+    addLog("Preparing watermark: "+item.title);
+    const videoBlob=$("watermarkOn").checked?await renderVideoWithWatermark(item.file):item.file;
+    addLog("Uploading: "+item.title);
+    await uploadToYouTube(videoBlob,item,publishAt);
+    addLog("✓ Scheduled: "+item.title+" — "+publishAt.toLocaleString(),"ok");
+    queue.splice(index,1);completed++;$("progress").value=completed;updateCount();
+   }catch(error){
+    addLog("✕ "+item.title+": "+error.message,"warn");
+    if(!accessToken||error.message.includes("quota"))break;
+    index++;
+   }
+  }
+  if(!queue.length)addLog("🎉 All clips in the queue have been processed.","ok");
+  else addLog("Queue paused. "+queue.length+" clip(s) remain. Resolve the issue, sign in again if needed, and press Upload and schedule to continue.","warn");
+ }finally{isRunning=false;$("startQueue").disabled=false;$("clearQueue").disabled=false}
+});
+</script>
+</body>
+</html>
